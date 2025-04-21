@@ -1,0 +1,32 @@
+const button = document.getElementById('search');
+const resultsDiv = document.getElementById('results');
+
+button.addEventListener('click', async () => {
+  const keyword = document.getElementById('keyword').value;
+  if (!keyword) return alert('Please enter a keyword.');
+
+  resultsDiv.innerHTML = 'Loading...';
+  try {
+    const res = await fetch(`/api/scrape?keyword=${encodeURIComponent(keyword)}`);
+    const data = await res.json();
+
+    if (data.error) {
+      resultsDiv.innerHTML = `<p>${data.error}</p>`;
+      return;
+    }
+
+    resultsDiv.innerHTML = '';
+    data.results.forEach(product => {
+      const productDiv = document.createElement('div');
+      productDiv.innerHTML = `
+        <strong>${product.title}</strong><br />
+        Rating: ${product.rating}<br />
+        Reviews: ${product.reviews}<br />
+        <img src="${product.imageUrl}" width="100" />
+      `;
+      resultsDiv.appendChild(productDiv);
+    });
+  } catch (err) {
+    resultsDiv.innerHTML = `<p>Error fetching data</p>`;
+  }
+});

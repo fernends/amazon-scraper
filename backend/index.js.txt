@@ -1,0 +1,46 @@
+import express from 'express';
+import axios from 'axios';
+import { JSDOM } from 'jsdom';
+
+const app = express();
+const PORT = 3000;
+
+app.get('/api/scrape', async (req, res) => {
+  const keyword = req.query.keyword;
+  if (!keyword) {
+    return res.status(400).json({ error: 'Keyword is required.' });
+  }
+
+  try {
+    const searchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(keyword)}`;
+    const { data: html } = await axios.get(searchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+        'Accept-Language': 'en-US,en;q=0.9'
+      }
+    });
+
+    const dom = new JSDOM(html);
+    const document = dom.window.document;
+    const products = [];
+
+    document.querySelectorAll('[data-component-type="s-search-result"]').forEach(item => {
+      const title = item.querySelector('h2 span')?.textContent.trim();
+      const rating = item.querySelector('i span')?.textContent.trim();
+      const reviews = item.querySelector('[aria-label*="ratings"]')?.textContent.trim();
+      const imageUrl = item.querySelector('img')?.src;
+
+      if (title && rating && reviews && imageUrl) {
+        products.push({ title, rating, reviews, imageUrl });
+      }
+    });
+
+    res.json({ results: products });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch or parse data.' });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
